@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from src.db import PredictionLog, SessionLocal, init_db
 from src.drift import generate_drift_report, get_drift_status
 from src.model import ModelService
+from src.retrain import retrain_safely
 from src.schemas import PredictRequest, PredictResponse
 
 model_service = ModelService()
@@ -92,3 +93,13 @@ def drift_alert(threshold: float = 0.5):
         "n_current": status.n_current,
         "n_reference": status.n_reference,
     }
+
+@app.post("/retrain")
+def retrain():
+    ran = retrain_safely()
+    if not ran:
+        return {"status": "already_running"}
+
+    # reload freshly trained model artifact
+    model_service.reload()
+    return {"status": "ok", "model_version": model_service.model_version}

@@ -18,6 +18,9 @@ class ModelService:
                 f"Model not found at {MODEL_PATH}. Run: python -m src.train"
             )
         self._bundle = joblib.load(MODEL_PATH)
+    def reload(self) -> None:
+        # same as load, but nicer name for runtime updates
+        self.load()
 
     @property
     def model_version(self) -> str:

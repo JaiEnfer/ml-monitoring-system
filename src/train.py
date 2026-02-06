@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +15,8 @@ ARTIFACT_DIR = Path("artifacts")
 MODEL_PATH = ARTIFACT_DIR / "model.joblib"
 META_PATH = ARTIFACT_DIR / "meta.json"
 REFERENCE_PATH = ARTIFACT_DIR / "reference.csv"
+VERSION_PATH = ARTIFACT_DIR / "version.json"
+
 
 
 FEATURES = ["age", "income", "years_employed", "credit_score"]
@@ -54,6 +57,16 @@ def make_synthetic_data(n: int = 5000, seed: int = 42) -> pd.DataFrame:
     )
     return df
 
+def next_version() -> str:
+    if VERSION_PATH.exists():
+        data = json.loads(VERSION_PATH.read_text(encoding="utf-8"))
+        n = int(data.get("version", 1)) + 1
+    else:
+        n = 1
+    VERSION_PATH.write_text(json.dumps({"version": n}), encoding="utf-8")
+    return f"v{n}"
+
+
 
 def train() -> TrainResult:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -73,9 +86,11 @@ def train() -> TrainResult:
 
     proba = model.predict_proba(X_test)[:, 1]
     auc = roc_auc_score(y_test, proba)
+    version = next_version()
+
 
     joblib.dump(
-        {"model": model, "features": FEATURES, "model_version": "v1"},
+        {"model": model, "features": FEATURES, "model_version": version},
         MODEL_PATH,
     )
 
