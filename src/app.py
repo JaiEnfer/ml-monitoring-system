@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from src.db import PredictionLog, SessionLocal, init_db
-from src.drift import generate_drift_report
+from src.drift import generate_drift_report, get_drift_status
 from src.model import ModelService
 from src.schemas import PredictRequest, PredictResponse
 
@@ -58,3 +58,37 @@ def predict(req: PredictRequest):
 def drift_report():
     path = generate_drift_report(limit=500)
     return FileResponse(path, media_type="text/html", filename=path.name)
+
+@app.get("/drift/status")
+def drift_status():
+    try:
+        status = get_drift_status(limit=500)
+        return {
+            "drift_detected": status.drift_detected,
+            "share_drifted_features": status.share_drifted_features,
+            "drifted_features": status.drifted_features,
+            "n_reference": status.n_reference,
+            "n_current": status.n_current,
+        }
+    except Exception as e:
+        # Return readable error instead of generic 500
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/drift/alert")
+def drift_alert(threshold: float = 0.5):
+    """
+    threshold: fraction of features drifted to raise an alert
+    """
+    status = get_drift_status(limit=500)
+    level = "OK"
+    if status.share_drifted_features >= threshold:
+        level = "ALERT"
+
+    return {
+        "level": level,
+        "threshold": threshold,
+        "share_drifted_features": status.share_drifted_features,
+        "drifted_features": status.drifted_features,
+        "n_current": status.n_current,
+        "n_reference": status.n_reference,
+    }

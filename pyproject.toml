@@ -1,4 +1,6 @@
 [tool.ruff]
 line-length = 100
-select = ["E", "F", "I"]
 exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
